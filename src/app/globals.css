@@ -118,10 +118,29 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+    * {
+      @apply border-border outline-ring/50;
+    }
+    body {
+      @apply bg-background text-foreground;
+    }
   }
-  body {
-    @apply bg-background text-foreground;
+
+  @layer utilities {
+    .animate-on-scroll {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    
+    .is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    header.scrolled {
+      background: rgba(0, 0, 0, 0.95);
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
   }
-}
