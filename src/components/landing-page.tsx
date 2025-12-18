@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { signUp } from '@/lib/auth'
+import { signUp, signIn } from '@/lib/auth'
 import { 
   Rocket, 
   Code, 
@@ -20,20 +21,25 @@ import {
   ChevronUp,
   Building2,
   Star,
-  CheckCircle2,
   Lock,
   Mail,
   User,
-  AlertCircle
+  AlertCircle,
+  Brain,
+  MessageSquare,
+  Sparkles,
+  BookOpen
 } from 'lucide-react'
 
 export function LandingPage() {
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState({ strength: 0, text: 'Ingresa una contraseña' })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [authMode, setAuthMode] = useState<'register' | 'login'>('register')
 
   useEffect(() => {
     const handleScroll = () => {
@@ -95,13 +101,20 @@ export function LandingPage() {
 
   const validateForm = (formData: FormData) => {
     const errors: Record<string, string> = {}
-    const name = formData.get('name') as string
     const email = formData.get('email') as string
     const password = formData.get('password') as string
-    const confirmPassword = formData.get('confirmPassword') as string
 
-    if (!name || name.length < 3) {
-      errors.name = 'Por favor, ingresa tu nombre completo'
+    if (authMode === 'register') {
+      const name = formData.get('name') as string
+      const confirmPassword = formData.get('confirmPassword') as string
+
+      if (!name || name.length < 3) {
+        errors.name = 'Por favor, ingresa tu nombre completo'
+      }
+
+      if (password !== confirmPassword) {
+        errors.confirmPassword = 'Las contraseñas no coinciden'
+      }
     }
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -110,10 +123,6 @@ export function LandingPage() {
 
     if (!password || password.length < 8) {
       errors.password = 'La contraseña debe tener al menos 8 caracteres'
-    }
-
-    if (password !== confirmPassword) {
-      errors.confirmPassword = 'Las contraseñas no coinciden'
     }
 
     return errors
@@ -133,11 +142,24 @@ export function LandingPage() {
       return
     }
 
-    setTimeout(() => {
-      showNotification('¡Cuenta creada exitosamente! Revisa tu email.', 'success')
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    try {
+      if (authMode === 'register') {
+        await signUp(email, password)
+        showNotification('¡Cuenta creada! Revisa tu email para confirmar.', 'success')
+        ;(e.target as HTMLFormElement).reset()
+      } else {
+        await signIn(email, password)
+        showNotification('¡Inicio de sesión exitoso!', 'success')
+        router.push('/ai-assistant')
+      }
+    } catch (error: any) {
+      showNotification(error.message || 'Error al procesar la solicitud', 'error')
+    } finally {
       setIsSubmitting(false)
-      ;(e.target as HTMLFormElement).reset()
-    }, 1500)
+    }
   }
 
   return (
@@ -172,8 +194,8 @@ export function LandingPage() {
                 </button>
               </li>
               <li>
-                <button onClick={() => showNotification('Próximamente', 'success')} className="hover:text-white transition-colors">
-                  Soluciones
+                <button onClick={() => scrollToSection('ai')} className="hover:text-white transition-colors">
+                  IA Assistant
                 </button>
               </li>
               <li>
@@ -188,9 +210,12 @@ export function LandingPage() {
               </li>
             </ul>
 
-            <Button onClick={() => scrollToSection('registration')} className="hidden lg:flex bg-blue-600 hover:bg-blue-700">
-              Probar gratis
-            </Button>
+            <Link href="/ai-assistant">
+              <Button className="hidden lg:flex bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                <Bot className="w-4 h-4 mr-2" />
+                Asistente IA
+              </Button>
+            </Link>
           </nav>
 
           {isMenuOpen && (
@@ -202,8 +227,8 @@ export function LandingPage() {
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => { showNotification('Próximamente', 'success'); setIsMenuOpen(false) }} className="block">
-                    Soluciones
+                  <button onClick={() => { scrollToSection('ai'); setIsMenuOpen(false) }} className="block">
+                    IA Assistant
                   </button>
                 </li>
                 <li>
@@ -212,9 +237,9 @@ export function LandingPage() {
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => { showNotification('Próximamente', 'success'); setIsMenuOpen(false) }} className="block">
-                    Recursos
-                  </button>
+                  <Link href="/ai-assistant" className="block text-purple-400">
+                    Asistente IA
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -263,14 +288,15 @@ export function LandingPage() {
                   <User className="w-5 h-5 mr-2" />
                   Crear cuenta
                 </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => showNotification('Demo próximamente', 'success')}
-                  className="border-white/30 text-white hover:bg-white/10"
-                >
-                  Ver demo
-                </Button>
+                <Link href="/ai-assistant">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white w-full"
+                  >
+                    <Bot className="w-5 h-5 mr-2" />
+                    Probar IA
+                  </Button>
+                </Link>
               </div>
             </div>
 
@@ -356,34 +382,148 @@ export function LandingPage() {
         </div>
       </section>
 
+      <section id="ai" className="py-24 bg-gradient-to-br from-purple-900 via-blue-900 to-black text-white relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+        </div>
+
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                <Brain className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-medium">Nuevo | Asistente de IA para Programadores</span>
+              </div>
+
+              <h2 className="text-4xl lg:text-5xl font-bold leading-tight">
+                Tu compañero de programación inteligente
+              </h2>
+
+              <p className="text-xl text-white/80">
+                Resuelve dudas, genera código, corrige errores y aprende programación con nuestra IA especializada.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { icon: MessageSquare, text: 'Chat inteligente' },
+                  { icon: Code, text: 'Generación de código' },
+                  { icon: Sparkles, text: 'Corrección de errores' },
+                  { icon: BookOpen, text: 'Ejercicios prácticos' }
+                ].map((item, i) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={i} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm px-4 py-3 rounded-lg border border-white/20">
+                      <Icon className="w-5 h-5 text-purple-400" />
+                      <span>{item.text}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <Link href="/ai-assistant">
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  <Bot className="w-5 h-5 mr-2" />
+                  Probar Asistente IA Gratis
+                </Button>
+              </Link>
+            </div>
+
+            <div className="relative">
+              <Card className="p-6 bg-white/10 backdrop-blur-sm border-white/20">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-3 flex-1">
+                      <p className="text-sm">¡Hola! Soy tu asistente de programación. ¿En qué puedo ayudarte hoy?</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 flex-row-reverse">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="bg-blue-600/30 rounded-lg p-3 flex-1">
+                      <p className="text-sm">¿Cómo creo una función async en JavaScript?</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-3 flex-1">
+                      <p className="text-sm mb-2">Aquí tienes un ejemplo:</p>
+                      <pre className="bg-black/30 rounded p-2 text-xs overflow-x-auto">
+{`async function fetchData() {
+  const response = await fetch(url);
+  return response.json();
+}`}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="registration" className="py-24 bg-gradient-to-br from-zinc-50 to-white">
         <div className="container mx-auto px-6">
           <Card className="max-w-2xl mx-auto p-8 lg:p-12 shadow-2xl animate-on-scroll">
             <div className="text-center mb-8">
-              <h2 className="text-3xl lg:text-4xl font-bold mb-4">Comienza ahora</h2>
-              <p className="text-zinc-600">Regístrate para obtener una prueba gratuita de 14 días</p>
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                {authMode === 'register' ? 'Comienza ahora' : 'Iniciar sesión'}
+              </h2>
+              <p className="text-zinc-600">
+                {authMode === 'register' 
+                  ? 'Regístrate para obtener una prueba gratuita de 14 días' 
+                  : 'Accede a tu cuenta para continuar'}
+              </p>
+            </div>
+
+            <div className="flex gap-2 mb-6">
+              <Button 
+                variant={authMode === 'login' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setAuthMode('login')}
+              >
+                Iniciar Sesión
+              </Button>
+              <Button 
+                variant={authMode === 'register' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setAuthMode('register')}
+              >
+                Registrarse
+              </Button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <Label htmlFor="name" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Nombre completo *
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Tu nombre completo"
-                  className={formErrors.name ? 'border-red-500' : ''}
-                  required
-                />
-                {formErrors.name && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {formErrors.name}
-                  </p>
-                )}
-              </div>
+              {authMode === 'register' && (
+                <div>
+                  <Label htmlFor="name" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Nombre completo *
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Tu nombre completo"
+                    className={formErrors.name ? 'border-red-500' : ''}
+                  />
+                  {formErrors.name && (
+                    <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {formErrors.name}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="email" className="flex items-center gap-2">
@@ -406,17 +546,19 @@ export function LandingPage() {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="company" className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Empresa
-                </Label>
-                <Input
-                  id="company"
-                  name="company"
-                  placeholder="Nombre de tu empresa (opcional)"
-                />
-              </div>
+              {authMode === 'register' && (
+                <div>
+                  <Label htmlFor="company" className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Empresa
+                  </Label>
+                  <Input
+                    id="company"
+                    name="company"
+                    placeholder="Nombre de tu empresa (opcional)"
+                  />
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="password" className="flex items-center gap-2">
@@ -427,9 +569,9 @@ export function LandingPage() {
                   id="password"
                   name="password"
                   type="password"
-                  placeholder="Crea una contraseña segura"
+                  placeholder={authMode === 'register' ? 'Crea una contraseña segura' : 'Tu contraseña'}
                   className={formErrors.password ? 'border-red-500' : ''}
-                  onChange={(e) => setPasswordStrength(calculatePasswordStrength(e.target.value))}
+                  onChange={(e) => authMode === 'register' && setPasswordStrength(calculatePasswordStrength(e.target.value))}
                   required
                 />
                 {formErrors.password && (
@@ -438,7 +580,7 @@ export function LandingPage() {
                     {formErrors.password}
                   </p>
                 )}
-                {passwordStrength.strength > 0 && (
+                {authMode === 'register' && passwordStrength.strength > 0 && (
                   <div className="mt-2">
                     <div className="h-1 bg-zinc-200 rounded-full overflow-hidden">
                       <div 
@@ -454,26 +596,27 @@ export function LandingPage() {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="confirmPassword" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Confirmar contraseña *
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="Confirma tu contraseña"
-                  className={formErrors.confirmPassword ? 'border-red-500' : ''}
-                  required
-                />
-                {formErrors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {formErrors.confirmPassword}
-                  </p>
-                )}
-              </div>
+              {authMode === 'register' && (
+                <div>
+                  <Label htmlFor="confirmPassword" className="flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Confirmar contraseña *
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Confirma tu contraseña"
+                    className={formErrors.confirmPassword ? 'border-red-500' : ''}
+                  />
+                  {formErrors.confirmPassword && (
+                    <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {formErrors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <Button 
                 type="submit" 
@@ -484,12 +627,12 @@ export function LandingPage() {
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Creando cuenta...
+                    {authMode === 'register' ? 'Creando cuenta...' : 'Iniciando sesión...'}
                   </div>
                 ) : (
                   <>
                     <Rocket className="w-5 h-5 mr-2" />
-                    Crear cuenta
+                    {authMode === 'register' ? 'Crear cuenta' : 'Iniciar sesión'}
                   </>
                 )}
               </Button>
@@ -520,14 +663,25 @@ export function LandingPage() {
           <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
             Únete a miles de empresas que están transformando sus procesos con APIBlend
           </p>
-          <Button 
-            size="lg" 
-            onClick={() => scrollToSection('registration')}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
-          >
-            <Star className="w-5 h-5 mr-2" />
-            Comenzar ahora
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              onClick={() => scrollToSection('registration')}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              <Star className="w-5 h-5 mr-2" />
+              Comenzar ahora
+            </Button>
+            <Link href="/ai-assistant">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+              >
+                <Bot className="w-5 h-5 mr-2" />
+                Probar Asistente IA
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -553,9 +707,9 @@ export function LandingPage() {
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => showNotification('Próximamente', 'success')} className="hover:text-white transition-colors">
-                    Soluciones
-                  </button>
+                  <Link href="/ai-assistant" className="hover:text-white transition-colors">
+                    Asistente IA
+                  </Link>
                 </li>
                 <li>
                   <button onClick={() => showNotification('Próximamente', 'success')} className="hover:text-white transition-colors">
@@ -609,7 +763,7 @@ export function LandingPage() {
           </div>
 
           <div className="border-t border-zinc-800 pt-8 text-center text-zinc-400">
-            <p>&copy; 2025 APIBlend. Todos los derechos reservados.</p>
+            <p>&copy; 2025 APIBlend. Todos los derechos reservados. | <Link href="/ai-assistant" className="hover:text-white">Asistente IA para Programadores</Link></p>
           </div>
         </div>
       </footer>
@@ -625,7 +779,7 @@ export function LandingPage() {
 
       <div className="fixed bottom-6 left-6 bg-black/80 backdrop-blur-sm text-white px-4 py-2 rounded-full text-xs flex items-center gap-2 border border-white/10">
         <Zap className="w-3 h-3 text-blue-400" />
-        <span>powered by <strong>DigitalPulse</strong></span>
+        <span>powered by <strong>TEAM ABQ</strong></span>
       </div>
     </div>
   )
