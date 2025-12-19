@@ -4,9 +4,17 @@ export async function signUp(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${window.location.origin}/dashboard`,
+    }
   })
   
   if (error) throw error
+  
+  if (data.user && !data.user.confirmed_at) {
+    return { ...data, needsConfirmation: true }
+  }
+  
   return data
 }
 
