@@ -1,53 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
+import { NextResponse } from 'next/server'
+import { GoogleGenerativeAI } from '@google/genai'
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { message, language, context } = await request.json()
+    const { message, language } = await req.json()
 
-    if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY is not configured' }, { status: 500 })
     }
 
-    const systemPrompt = `Eres un asistente de programación experto y amigable llamado APIBlend AI. 
-Tu objetivo es ayudar a programadores de todos los niveles con:
-- Explicaciones claras de conceptos de programación
-- Generación de código limpio y bien documentado
-- Corrección y depuración de errores
-- Mejores prácticas y patrones de diseño
-- Consejos para mejorar el código
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-El usuario está trabajando principalmente con: ${language || 'JavaScript'}
+    const prompt = `Actúa como un experto en programación y automatización de APIs.
+      Lenguaje preferido: ${language || 'Cualquiera'}
+      Usuario pregunta: ${message}
+      
+      Responde de forma concisa, técnica y útil. Si piden código, proporciónalo con explicaciones breves.`
 
-Instrucciones:
-1. Responde siempre en español
-2. Usa markdown para formatear tu respuesta
-3. Cuando incluyas código, usa bloques de código con el lenguaje especificado
-4. Sé conciso pero completo
-5. Si no estás seguro de algo, dilo claramente
-6. Ofrece alternativas cuando sea apropiado
-
-${context ? `Contexto adicional del usuario: ${context}` : ''}`
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        { role: 'user', parts: [{ text: systemPrompt }] },
-        { role: 'model', parts: [{ text: '¡Entendido! Estoy listo para ayudarte con programación. ¿En qué puedo asistirte?' }] },
-        { role: 'user', parts: [{ text: message }] }
-      ]
-    })
-
-    const text = response.text || 'Lo siento, no pude generar una respuesta. Por favor, intenta de nuevo.'
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    const text = response.text()
 
     return NextResponse.json({ response: text })
   } catch (error: any) {
-    console.error('Chat API Error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Error processing request' },
-      { status: 500 }
-    )
+    console.error('Gemini API Error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

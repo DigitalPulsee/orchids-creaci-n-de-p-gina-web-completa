@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useTheme } from '@/contexts/ThemeContext'
 import {
   ReactFlow,
   MiniMap,
@@ -75,7 +76,7 @@ const API_NODES: APINode[] = [
   { id: 'filter', type: 'filter', name: 'Filtrar', icon: Filter, color: 'bg-yellow-500', config: { conditions: [], logic: 'AND' } },
 ]
 
-function CustomNode({ data, selected }: { data: any; selected: boolean }) {
+function CustomNode({ data, selected }: any) {
   const Icon = data.icon
   return (
     <div className={`px-4 py-3 rounded-xl border-2 min-w-[180px] transition-all ${
@@ -101,7 +102,7 @@ const nodeTypes = { custom: CustomNode }
 export default function DashboardPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const { theme, toggleTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<'editor' | 'chat'>('editor')
   const [workflowName, setWorkflowName] = useState('Mi Workflow')
@@ -119,13 +120,6 @@ export default function DashboardPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
-
-  useEffect(() => {
     if (!loading && !user) {
       router.push('/login')
     }
@@ -134,12 +128,6 @@ export default function DashboardPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
-  }
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type })
@@ -440,41 +428,6 @@ export default function DashboardPage() {
           </>
         )}
 
-        {type === 'sheets' && (
-          <>
-            <div>
-              <Label className={isDark ? 'text-white' : ''}>ID de la Hoja</Label>
-              <Input
-                value={nodeConfig.spreadsheetId || ''}
-                onChange={(e) => updateNodeConfig('spreadsheetId', e.target.value)}
-                placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                className={isDark ? 'bg-zinc-800 border-zinc-700 text-white' : ''}
-              />
-            </div>
-            <div>
-              <Label className={isDark ? 'text-white' : ''}>Rango</Label>
-              <Input
-                value={nodeConfig.range || ''}
-                onChange={(e) => updateNodeConfig('range', e.target.value)}
-                placeholder="Sheet1!A1:D10"
-                className={isDark ? 'bg-zinc-800 border-zinc-700 text-white' : ''}
-              />
-            </div>
-            <div>
-              <Label className={isDark ? 'text-white' : ''}>Operación</Label>
-              <select
-                value={nodeConfig.operation || 'read'}
-                onChange={(e) => updateNodeConfig('operation', e.target.value)}
-                className={`w-full p-2 rounded-md border ${isDark ? 'bg-zinc-800 border-zinc-700 text-white' : 'bg-white border-zinc-300'}`}
-              >
-                <option value="read">Leer datos</option>
-                <option value="write">Escribir datos</option>
-                <option value="append">Agregar fila</option>
-              </select>
-            </div>
-          </>
-        )}
-
         <Button
           variant="destructive"
           className="w-full mt-4"
@@ -700,10 +653,8 @@ export default function DashboardPage() {
                             ? 'bg-blue-600 text-white'
                             : isDark ? 'bg-zinc-700' : 'bg-zinc-100'
                         }`}>
-                          <div className="prose prose-sm dark:prose-invert max-w-none">
-                            {msg.content.split('\n').map((line, i) => (
-                              <p key={i} className="mb-1 last:mb-0">{line}</p>
-                            ))}
+                          <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                            {msg.content}
                           </div>
                         </div>
                       </div>
