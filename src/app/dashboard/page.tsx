@@ -178,11 +178,19 @@ export default function DashboardPage() {
     
     if (selectedNode) {
       setNodes((nds) =>
-        nds.map((n) =>
-          n.id === selectedNode.id
-            ? { ...n, data: { ...n.data, config: { ...n.data.config, [key]: value } } }
-            : n
-        )
+        nds.map((n) => {
+          if (n.id === selectedNode.id) {
+            const nodeData = n.data as any
+            return { 
+              ...n, 
+              data: { 
+                ...nodeData, 
+                config: { ...nodeData.config, [key]: value } 
+              } 
+            }
+          }
+          return n
+        })
       )
     }
   }
